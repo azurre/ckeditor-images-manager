@@ -6,14 +6,14 @@ CKEditor Images Manager is a plugin that allows you to upload images to your ser
 2. Then enable the plugin by changing or adding the extraPlugins line in your configuration (config.js):
 
 ### Defining Configuration In-Page
-```
+```javascript
 CKEDITOR.replace( 'editor1', {
   extraPlugins: 'imagesmanager'
 });
 ```
 
 ### Using the config.js File
-```
+```javascript
 CKEDITOR.editorConfig = function( config ) {
   config.extraPlugins = 'imagesmanager';
 };
