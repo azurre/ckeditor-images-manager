@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>CKEditor image manager</title>
+    <link rel="icon" href="img/favicon.ico">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+</head>
+
+<body>
+
+<div id="popup" class="popup v-center">
+    <div>
+        <div><img src="img/loader.gif" alt="Loading" /></div>
+        <div><h1>Loading...</h1></div>
+    </div>
+
+</div>
+
+<div id="main" class="main hide">
+    <div class="header">
+        <div class="center clearfix">
+            <a class="btn upload" onclick="$('#file').click();" title="Upload image"></a>
+            <a class="btn refresh" onclick="loadImages();" title="Reload images"></a>
+            <a class="btn close"  onclick="window.close();" title="Close"></a>
+        </div>
+    </div>
+
+    <div id="content" class="content">
+        <div class="files"></div>
+
+        <form action="api.php" method="post" enctype="multipart/form-data" id="uploadForm" class="hide">
+            <input type="file" name="file" id="file">
+        </form>
+    </div>
+
+    <div id="dropzone" class="dropzone hide">
+        <div>
+            <div>
+                <img src="img/ico-upload-big.png"><br>
+                <span>Drop image</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="function.js"></script>
+</body>
+</html>
