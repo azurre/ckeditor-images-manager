@@ -1,9 +1,4 @@
 <?php
-/**
- * @date    07.10.2016
- * @version 0.1
- * @author  Aleksandr Milenin azrr.mail@gmail.com
- */
 
 return array(
     'auth'          => true,

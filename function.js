@@ -1,12 +1,21 @@
 /**
  * @date    07.10.2016
  * @version 1.0
- * @author  Aleksandr Milenin azrr.mail@gmail.com
+ * @author  Aleksandr Milenin admin@azrr.info
  */
 
 var
     dir          = 'upload/',
     imageFullUrl = true;
+
+function uploadByUrl(){
+    var url;
+    if (url = prompt('Enter image URL:')) {
+        send({act: "upload", url: url}, function (response) {
+            renderImages(response.list);
+        });
+    }
+}
 
 
 function sendFile(file, onComplete) {

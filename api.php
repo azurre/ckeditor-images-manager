@@ -2,7 +2,7 @@
 /**
  * @date    07.10.2016
  * @version 0.1
- * @author  Aleksandr Milenin azrr.mail@gmail.com
+ * @author  Aleksandr Milenin admin@azrr.info
  */
 
 define('BASE_PATH', dirname(__FILE__) . '/');
@@ -29,21 +29,23 @@ class Api {
             );
         }
 
-        $action = isset($_REQUEST['act']) ? $_REQUEST['act'] : '';
+        $action       = empty($_REQUEST['act']) ? '' : $_REQUEST['act'];
+        $url          = empty($_REQUEST['url']) ? '' : $_REQUEST['url'];
+        $isFileUpload = isset($_FILES['file']);
+
         switch ($action) {
             default:
                 $this->response(array('error' => 100));
-                break;
+            break;
 
             case 'get-images':
-                header('Content-Type: application/json');
-                exit(json_encode(array(
+                $this->response(array(
                     'error'        => 0,
                     'dir'          => $this->config['uploadDir'],
                     'imageFullUrl' => $this->config['imageFullUrl'],
                     'list'         => $this->getImages()
-                )));
-                break;
+                ));
+            break;
 
             case 'upload':
                 require BASE_PATH . 'Uploader.php';
@@ -58,34 +60,45 @@ class Api {
                     ->addValidator(Uploader::VALIDATOR_SIZE, $this->config['maxSize']);
 
                 try {
-                    $Uploader->upload('file');
+                    if ($isFileUpload){
+                        $Uploader->upload('file');
+                    } elseif( $url ) {
+                        $Uploader->uploadByUrl( $url );
+                    } else {
+                        $error = 'No files uploaded';
+                    }
+
                     $files = $Uploader->getFiles();
+                    foreach ($files as &$file) {
+                        $file = static::getImageInfo($file['fullPath']);
+                    }
                 } catch (\Exception $e) {
                     $error = $e->getMessage();
                 }
 
-                foreach ($files as &$file) {
-                    $file = static::getImageInfo($file['fullPath']);
-                }
-
-                header('Content-Type: application/json');
-                exit(json_encode(array(
+                $this->response(array(
                     'error' => $error,
                     'list'  => $files
-                )));
-                break;
+                ));
+            break;
 
             case 'delete':
                 if ($success = $this->delete($_REQUEST['file'])) {
                     $this->response(array('error' => 0));
                 }
 
-                $this->response(array('error' => $this->debug['message'], 'debug' => $this->debug));
-                break;
+                $this->response(array(
+                    'error' => $this->debug['message'],
+                    'debug' => $this->debug
+                ));
+            break;
         }
     }
 
 
+    /**
+     * @return array
+     */
     public function getImages()
     {
         $path   = $this->config['uploadPath'];
@@ -127,10 +140,15 @@ class Api {
         );
     }
 
+    /**
+     * @param string $filename
+     *
+     * @return bool
+     */
     public function delete($filename)
     {
         if (!$filePath = realpath($this->config['uploadPath'] . $filename)) {
-            $this->debug = ['message' => 'Cannot get realpath'];
+            $this->debug = ['message' => 'Cannot get real path'];
 
             return false;
         }
@@ -146,6 +164,9 @@ class Api {
         return unlink($filePath);
     }
 
+    /**
+     * @return bool
+     */
     public function auth()
     {
         $cookies = array();
@@ -167,7 +188,7 @@ class Api {
             $authUrl = (isset($_SERVER['HTTPS']) && 'on' === $_SERVER['HTTPS'] ? 'https' : 'http') . "://{$_SERVER['HTTP_HOST']}{$dir}/{$this->config['authUrl']}";
         }
 
-        if (!$result = file_get_contents($authUrl, false, $context)) {
+        if (!$result = @file_get_contents($authUrl, false, $context)) {
             $this->debug = ['result' => $result, 'url' => $authUrl];
 
             return false;
@@ -187,11 +208,19 @@ class Api {
         return false;
     }
 
+
+    /**
+     * @return mixed
+     */
     public function getDebug()
     {
         return $this->debug;
     }
 
+
+    /**
+     * @param array $response
+     */
     public function response($response)
     {
         header('Content-Type: application/json');

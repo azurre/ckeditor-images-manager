@@ -19,13 +19,15 @@ class Uploader {
         ERROR_PARTIAL           = 3,
         ERROR_NO_FILE           = 4,
         ERROR_NO_TMP_DIR        = 6,
-        ERROR_CANT_WRITE        = 7,
+        ERROR_CANNOT_WRITE      = 7,
         ERROR_EXTENSION         = 8,
         ERROR_FILE_TOO_LARGE    = 20,
         ERROR_INVALID_MIMETYPE  = 21,
         ERROR_INVALID_EXTENSION = 22,
         ERROR_INVALID_FORMATTER = 23,
         ERROR_NO_AVAILABLE_NAME = 24,
+        ERROR_CANNOT_GET_FILE   = 25,
+        ERROR_CANNOT_MOVE_FILE  = 26,
 
         VALIDATOR_MIME      = 0,
         VALIDATOR_SIZE      = 1,
@@ -42,11 +44,15 @@ class Uploader {
         self::ERROR_PARTIAL           => 'The uploaded file was only partially uploaded',
         self::ERROR_NO_FILE           => 'No file was uploaded',
         self::ERROR_NO_TMP_DIR        => 'Missing a temporary folder',
-        self::ERROR_CANT_WRITE        => 'Failed to write file to disk',
+        self::ERROR_CANNOT_WRITE      => 'Failed to write file to disk',
         self::ERROR_EXTENSION         => 'A PHP extension stopped the file upload',
+        self::ERROR_INVALID_EXTENSION => 'Validator: restricted extension',
+        self::ERROR_INVALID_MIMETYPE  => 'Validator: restricted mime-type',
         self::ERROR_FILE_TOO_LARGE    => 'Validator: file too large',
         self::ERROR_INVALID_FORMATTER => 'Formatter function must return filename',
-        self::ERROR_NO_AVAILABLE_NAME => 'Cannot find available name for uploaded file'
+        self::ERROR_NO_AVAILABLE_NAME => 'Cannot find available name for uploaded file',
+        self::ERROR_CANNOT_GET_FILE   => 'Cannot get file content from URL',
+        self::ERROR_CANNOT_MOVE_FILE  => 'Cannot move uploaded file'
     );
 
 
@@ -84,6 +90,7 @@ class Uploader {
         $beforeUploadCallback,
         $afterUploadCallback,
         $nameFormatter,
+        $isUrlUpload = false,
         $files = array(),
         $validators = array(),
         $errorCode = self::ERROR_NO_ERROR;
@@ -110,6 +117,14 @@ class Uploader {
         return $this;
     }
 
+
+    /**
+     * @return int
+     */
+    public function getNameFormat()
+    {
+        return $this->nameFormat;
+    }
 
     /**
      * @param int $nameFormat
@@ -258,7 +273,7 @@ class Uploader {
         $allowedMimetypes = is_array($allowedMimetypes) ? $allowedMimetypes : array($allowedMimetypes);
 
         if (!in_array($mimetype, $allowedMimetypes)) {
-            $this->setError("Mimetype {$mimetype} not allowed");
+            $this->setError(static::ERROR_INVALID_MIMETYPE);
         }
     }
 
@@ -318,7 +333,7 @@ class Uploader {
             return $newName;
         }
 
-        if ($this->nameFormat === static::NAME_FORMAT_ORIGINAL) {
+        if ($this->getNameFormat() === static::NAME_FORMAT_ORIGINAL) {
             return $file['fullName'];
         }
 
@@ -326,7 +341,7 @@ class Uploader {
         $prefix   = '';
         while ($tryCount < static::NAME_TRY_COUNT) {
             $tryCount++;
-            if ($this->nameFormat === static::NAME_FORMAT_COMBINED) {
+            if ($this->getNameFormat() === static::NAME_FORMAT_COMBINED) {
                 $prefix = ($this->replaceCyrillic ? static::transliterate($file['name']) : $file['name']) . '_';
             }
 
@@ -339,6 +354,7 @@ class Uploader {
         }
 
         $this->setError(static::ERROR_NO_AVAILABLE_NAME);
+
         return 'error'; // IDE fix :(
     }
 
@@ -350,6 +366,7 @@ class Uploader {
      */
     public function upload($key)
     {
+        $this->isUrlUpload = false;
         $this->clearErrorCode();
 
         if (!isset($_FILES[ $key ])) {
@@ -384,6 +401,12 @@ class Uploader {
             );
         }
 
+        $this->process();
+    }
+
+
+    protected function process()
+    {
         foreach ($this->files as $key => &$file) {
             if ($file['error'] !== UPLOAD_ERR_OK) {
                 $this->errorCode = $file['error'];
@@ -404,12 +427,66 @@ class Uploader {
             }
 
             $this->applyCallback($this->beforeUploadCallback, $file);
-            if (move_uploaded_file($file['tmpName'], $destinationFile) === false) {
-                throw new \Exception("Cannot move file {$file['name']} to destination folder");
+            if ($this->isUrlUpload) {
+                if (@rename($file['tmpName'], $destinationFile) === false) {
+                    $this->setError(static::ERROR_CANNOT_MOVE_FILE);
+                }
+                chmod($destinationFile, 0644);
+            } else {
+                if (@move_uploaded_file($file['tmpName'], $destinationFile) === false) {
+                    $this->setError(static::ERROR_CANNOT_MOVE_FILE);
+                }
             }
             $file['fullPath'] = realpath($destinationFile);
             $this->applyCallback($this->afterUploadCallback, $file);
         }
+    }
+
+    /**
+     * @param string $url File url
+     *
+     * @throws \Exception
+     */
+    public function uploadByUrl($url)
+    {
+        $this->isUrlUpload = true;
+        $this->clearErrorCode();
+
+        $urlInfo  = pathinfo($url);
+        $basename = empty($urlInfo['basename']) ? 'noname' : $urlInfo['basename'];
+        $basename = preg_replace('/[^\w\.\-]/', '', $basename);
+        $tempFile = tempnam(sys_get_temp_dir(), 'upload');
+
+        $this->files    = [];
+        $this->files[0] = array(
+            'name'      => isset($urlInfo['filename']) ? $urlInfo['filename'] : 'noname',
+            'fullName'  => $basename,
+            'newName'   => isset($urlInfo['basename']) ? $urlInfo['basename'] : 'noname',
+            'fullPath'  => '',
+            'extension' => isset($urlInfo['extension']) ? $urlInfo['extension'] : '',
+            'mime'      => 'application/octet-stream',
+            'tmpName'   => $tempFile,
+            'size'      => 0,
+            'error'     => $tempFile ? static::ERROR_NO_ERROR : static::ERROR_NO_TMP_DIR
+        );
+
+        //@todo maxFileSize
+        if (!$content = @file_get_contents($url)) {
+            $this->files[0]['error'] = static::ERROR_CANNOT_GET_FILE;
+
+            return;
+        }
+
+        $this->files[0]['size'] = strlen($content);
+
+        if (!@file_put_contents($tempFile, $content)) {
+            $this->files[0]['error'] = static::ERROR_CANNOT_WRITE;
+
+            return;
+        }
+        $this->files[0]['mime'] = mime_content_type($tempFile);
+
+        $this->process();
     }
 
 

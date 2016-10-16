@@ -166,6 +166,10 @@ body {
     background-image: url(../img/ico-upload.png);
 }
 
+.btn.url {
+    background-image: url(../img/ico-url.png);
+}
+
 .btn.refresh {
     background-image: url(../img/ico-refresh.png);
 }
