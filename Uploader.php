@@ -7,10 +7,8 @@
  */
 
 class Uploader {
-
     //! Maximum try count to find available name for uploaded file
     const NAME_TRY_COUNT = 10;
-
 
     const
         ERROR_NO_ERROR          = 0,
@@ -96,27 +94,26 @@ class Uploader {
         $errorCode = self::ERROR_NO_ERROR;
 
 
+    /**
+     * Uploader constructor.
+     */
     public function __construct()
     {
-        // fix http://stackoverflow.com/questions/4451664/make-php-pathinfo-return-the-correct-filename-if-the-filename-is-utf-8
+        // fix: http://stackoverflow.com/questions/4451664/make-php-pathinfo-return-the-correct-filename-if-the-filename-is-utf-8
         setlocale(LC_ALL, 'en_US.UTF-8');
     }
-
 
     /**
      * Transliterate cyrillic names. Strongly recommended!
      *
      * @param bool $replace
-     *
      * @return $this
      */
     public function setReplaceCyrillic($replace = true)
     {
         $this->replaceCyrillic = (bool)$replace;
-
         return $this;
     }
-
 
     /**
      * @return int
@@ -127,18 +124,30 @@ class Uploader {
     }
 
     /**
-     * @param int $nameFormat
+     * Define naming format
      *
+     * @param int $nameFormat
      * @return $this
      */
     public function setNameFormat($nameFormat)
     {
         $this->nameFormat = (int)$nameFormat;
-
         return $this;
     }
 
     /**
+     * Retrieve error message
+     *
+     * @return string
+     */
+    public function getErrorMessage()
+    {
+        return $this->errorMessages[ $this->errorCode ];
+    }
+
+    /**
+     * Retrieve error code
+     *
      * @return int
      */
     public function getErrorCode()
@@ -157,11 +166,9 @@ class Uploader {
     public function setError($errorCode, $throwException = true)
     {
         $this->errorCode = (int)$errorCode;
-
         if ($throwException) {
             throw new \Exception($this->getErrorMessage(), $this->errorCode);
         }
-
         return $this;
     }
 
@@ -171,19 +178,8 @@ class Uploader {
     public function clearErrorCode()
     {
         $this->errorCode = static::ERROR_NO_ERROR;
-
         return $this;
-
     }
-
-    /**
-     * @return string
-     */
-    public function getErrorMessage()
-    {
-        return $this->errorMessages[ $this->errorCode ];
-    }
-
 
     /**
      * @param bool $overwrite
@@ -193,10 +189,8 @@ class Uploader {
     public function setOverwrite($overwrite = true)
     {
         $this->overwrite = (bool)$overwrite;
-
         return $this;
     }
-
 
     /**
      * @param string $storagePath
@@ -206,7 +200,6 @@ class Uploader {
     public function setStoragePath($storagePath)
     {
         $this->storagePath = $storagePath;
-
         return $this;
     }
 
@@ -222,7 +215,6 @@ class Uploader {
     /**
      * @param int   $validatorType
      * @param mixed $data
-     *
      * @return $this
      * @throws \Exception
      */
@@ -231,15 +223,12 @@ class Uploader {
         if (!is_int($validatorType) || $validatorType < 0 || $validatorType > 2) {
             throw new \Exception('Invalid validator type');
         }
-
         $this->validators[] = array('type' => $validatorType, 'data' => $data);
-
         return $this;
     }
 
     /**
      * @param array $file
-     *
      * @throws \Exception
      */
     public function applyValidators($file)
@@ -265,28 +254,24 @@ class Uploader {
     /**
      * @param string $mimetype
      * @param array  $allowedMimetypes
-     *
      * @throws \Exception
      */
     public function validateMimetype($mimetype, $allowedMimetypes)
     {
         $allowedMimetypes = is_array($allowedMimetypes) ? $allowedMimetypes : array($allowedMimetypes);
-
         if (!in_array($mimetype, $allowedMimetypes)) {
-            $this->setError(static::ERROR_INVALID_MIMETYPE);
+            $this->setError(static::ERROR_INVALID_MIMETYPE . ": {$mimetype}");
         }
     }
 
     /**
      * @param int|string $size Support human readable size e.g. "200K", "1M"
      * @param int        $maxSize
-     *
      * @throws \Exception
      */
     public function validateSize($size, $maxSize)
     {
         $maxSize = static::humanReadableToBytes($maxSize);
-
         if ($size > $maxSize) {
             $this->setError(static::ERROR_FILE_TOO_LARGE);
         }
@@ -295,14 +280,12 @@ class Uploader {
     /**
      * @param string $extension
      * @param array  $allowedExtensions
-     *
      * @throws \Exception
      */
     public function validateExtension($extension, $allowedExtensions)
     {
         $extension         = strtolower($extension);
         $allowedExtensions = is_array($allowedExtensions) ? $allowedExtensions : array($allowedExtensions);
-
         if (!in_array($extension, $allowedExtensions)) {
             throw new \Exception("Extension {$extension} not allowed");
         }
@@ -354,14 +337,12 @@ class Uploader {
         }
 
         $this->setError(static::ERROR_NO_AVAILABLE_NAME);
-
         return 'error'; // IDE fix :(
     }
 
 
     /**
      * @param string $key Key of $_FILE array
-     *
      * @throws \Exception
      */
     public function upload($key)
@@ -492,13 +473,11 @@ class Uploader {
 
     /**
      * @param callable $callback
-     *
      * @return $this
      */
     public function beforeValidate($callback)
     {
         $this->beforeValidateCallback = $callback;
-
         return $this;
     }
 
@@ -510,7 +489,6 @@ class Uploader {
     public function afterValidate($callback)
     {
         $this->afterValidateCallback = $callback;
-
         return $this;
     }
 
@@ -522,7 +500,6 @@ class Uploader {
     public function beforeUpload($callback)
     {
         $this->beforeUploadCallback = $callback;
-
         return $this;
     }
 
@@ -534,7 +511,6 @@ class Uploader {
     public function afterUpload($callback)
     {
         $this->afterUploadCallback = $callback;
-
         return $this;
     }
 
@@ -548,7 +524,6 @@ class Uploader {
     public function setNameFormatter($nameFormatter)
     {
         $this->nameFormatter = $nameFormatter;
-
         return $this;
     }
 
@@ -565,7 +540,6 @@ class Uploader {
         if (is_callable($callback)) {
             return call_user_func_array($callback, array($file, $this));
         }
-
         return false;
     }
 
@@ -573,7 +547,6 @@ class Uploader {
      * Convert human readable size into bytes
      *
      * @param  string $input
-     *
      * @return int
      */
     public static function humanReadableToBytes($input)
@@ -581,7 +554,6 @@ class Uploader {
         if (is_numeric($input)) {
             return (int)$input;
         }
-
         $number = (int)$input;
         $units  = array(
             'b' => 1,
@@ -593,21 +565,17 @@ class Uploader {
         if (isset($units[ $unit ])) {
             $number = $number * $units[ $unit ];
         }
-
         return $number;
     }
 
     /**
      * @param string $string
-     *
      * @return string
      */
     public static function transliterate($string)
     {
         $roman    = array("Sch", "sch", 'Yo', 'Zh', 'Kh', 'Ts', 'Ch', 'Sh', 'Yu', 'ya', 'yo', 'zh', 'kh', 'ts', 'ch', 'sh', 'yu', 'ya', 'A', 'B', 'V', 'G', 'D', 'E', 'Z', 'I', 'Y', 'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'F', '', 'Y', '', 'E', 'a', 'b', 'v', 'g', 'd', 'e', 'z', 'i', 'y', 'k', 'l', 'm', 'n', 'o', 'p', 'r', 's', 't', 'u', 'f', '', 'y', '', 'e');
         $cyrillic = array("Щ", "щ", 'Ё', 'Ж', 'Х', 'Ц', 'Ч', 'Ш', 'Ю', 'я', 'ё', 'ж', 'х', 'ц', 'ч', 'ш', 'ю', 'я', 'А', 'Б', 'В', 'Г', 'Д', 'Е', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Ь', 'Ы', 'Ъ', 'Э', 'а', 'б', 'в', 'г', 'д', 'е', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у', 'ф', 'ь', 'ы', 'ъ', 'э');
-
         return str_replace($cyrillic, $roman, $string);
     }
-
 }
